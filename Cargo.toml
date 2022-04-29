@@ -1,0 +1,25 @@
+[package]
+name = "rust-crates-index-metrics"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+
+[dependencies]
+crates-index = "0.18.7"
+reqwest = "0.11.10"
+tempdir = "0.3.7"
+tokio = { version = "1.18.0", features = ["full"] }
+flate2 = "1.0.22"
+tar = "0.4.38"
+serde = { version = "1.0.136", features = ["derive"] }
+cargo_toml = "0.11.5"
+rayon = "1.5.2"
+futures = "0.3.21"
+num_cpus = "1.13.1"
+backoff = { version = "0.4.0", features = ["tokio"] }
