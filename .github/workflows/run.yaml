@@ -13,7 +13,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    timeout-minutes: 4320
+    timeout-minutes: 720
     steps:
     - uses: actions/checkout@v3
     - name: Run
