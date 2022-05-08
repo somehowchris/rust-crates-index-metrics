@@ -1,12 +1,17 @@
 use rayon::prelude::*;
+use std::borrow::Cow;
+
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Semaphore;
+use tokio_util::io::StreamReader;
 
+use async_tar::Archive;
 use cargo_toml::Manifest;
 use crates_index::{Crate, Version};
-use flate2::read::GzDecoder;
-use tar::Archive;
-use tempdir::TempDir;
+use futures::io::AsyncReadExt;
+use futures::TryStreamExt;
+use futures_util::StreamExt;
+use async_std::path::Path;
 
 mod binstall;
 
@@ -16,8 +21,8 @@ pub struct BinstallMetrics {
 }
 
 impl BinstallMetrics {
-    pub fn new(manifest_path: &str) -> Self {
-        if let Ok(manifest) = Manifest::<binstall::Meta>::from_path_with_metadata(manifest_path) {
+    pub fn new(manifest_path: Vec<u8>) -> Self {
+        if let Ok(manifest) = Manifest::<binstall::Meta>::from_slice_with_metadata(&manifest_path) {
             if let Some(metadata) = manifest.package.unwrap().metadata {
                 Self {
                     has_binstall_metadata: metadata.binstall.is_some(),
@@ -56,7 +61,7 @@ async fn main() {
     let mut versions_not_supporting_https = HashMap::<(String, String), String>::new();
 
     println!("Counting index");
-    let creates_count = index.crates().count();
+    let creates_count = index.crates_parallel().count();
 
     let config = index.index_config().unwrap();
 
@@ -82,14 +87,7 @@ async fn main() {
                             return None;
                         }
 
-                        let temp_dir = TempDir::new("cargo-binstall").unwrap();
-
-                        let temp_dir_path = temp_dir.path().to_owned();
-
                         let crate_url = version.download_url(&config).unwrap();
-                        let tgz_path = temp_dir_path
-                            .clone()
-                            .join(format!("{}.tgz", version.name()));
 
                         Some(async move {
                             let url = &crate_url.clone();
@@ -104,28 +102,42 @@ async fn main() {
                                 return None;
                             }
 
-                            let bytes = resp.bytes().await.unwrap();
-
-                            std::fs::create_dir_all(tgz_path.parent().unwrap()).unwrap();
-                            std::fs::write(&tgz_path, bytes).unwrap();
-
-                            let dat = std::fs::File::open(&tgz_path).unwrap();
-                            let tar = GzDecoder::new(dat);
-                            let mut tgz = Archive::new(tar);
-
-                            tgz.unpack(temp_dir_path.clone()).unwrap();
-
-                            let crate_path = temp_dir_path.clone().join(format!(
-                                "{}-{}",
-                                version.name(),
-                                version.version()
-                            ));
-
-                            let metrics = BinstallMetrics::new(
-                                crate_path.join("Cargo.toml").to_str().unwrap(),
+                            let tgz = Archive::new(
+                                tokio_util::io::ReaderStream::new(
+                                    async_compression::tokio::bufread::GzipDecoder::new(
+                                        StreamReader::new(resp.bytes_stream().map_err(|e| {
+                                            std::io::Error::new(std::io::ErrorKind::Other, e)
+                                        })),
+                                    ),
+                                )
+                                .into_async_read(),
                             );
 
-                            temp_dir.close().unwrap();
+                            let mut entries = tgz.entries().unwrap();
+
+                            let crate_file =
+                                format!("{}-{}/Cargo.toml", version.name(), version.version());
+
+                            let path = Cow::from(Path::new(&crate_file));
+
+                            let mut buff = None;
+
+                            while let Some(file) = entries.next().await {
+                                if let Ok(mut value) = file {
+                                    if let Ok(file_path) = value.path() {
+                                        if path == file_path {
+                                            let mut buffer = vec![];
+
+                                            value.read_to_end(&mut buffer).await.unwrap();
+                                            buff = Some(buffer);
+
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            let metrics = BinstallMetrics::new(buff.unwrap());
 
                             Some((metrics, version))
                         })
@@ -142,7 +154,7 @@ async fn main() {
                     (
                         single_crate.name().to_string(),
                         metrics
-                            .par_iter()
+                            .iter()
                             .filter_map(|e: &Option<(BinstallMetrics, &Version)>| {
                                 if let Some(v) = e {
                                     if v.0.has_binstall_metadata {
@@ -157,7 +169,7 @@ async fn main() {
                             .count(),
                     ),
                     metrics
-                        .par_iter()
+                        .iter()
                         .filter_map(|metric| {
                             if let Some(m) = metric {
                                 if m.0.has_binstall_metadata && !m.0.uses_https {
@@ -182,7 +194,7 @@ async fn main() {
         .collect::<Vec<_>>();
 
     let mut futs = vec![];
-    let semaphore = Arc::new(Semaphore::new(num_cpus::get() * 4));
+    let semaphore = Arc::new(Semaphore::new(num_cpus::get() * 8));
 
     for item in data {
         let permit = semaphore.clone().acquire_owned().await;
