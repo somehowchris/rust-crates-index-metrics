@@ -24,6 +24,7 @@ use futures_util::StreamExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod binstall;
+//mod files;
 
 pub struct BinstallMetrics {
     pub has_binstall_metadata: bool,
@@ -61,6 +62,8 @@ pub struct Metric {
     pub version: Version,
     pub binstall: BinstallMetrics,
 }
+
+use futures::{stream::Stream};
 
 #[tokio::main]
 async fn main() {
@@ -153,13 +156,13 @@ async fn main() {
         }
     });
 
-    let semaphore = Arc::new(Semaphore::new(1));
+    let semaphore = Arc::new(Semaphore::new(num_cpus::get()));
     let bar = Arc::new(ProgressBar::new(total_versions.try_into().unwrap()));
 
     bar.set_style(
         ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-            .progress_chars("##-"),
+            .template("    Calculating Metrics [{bar:25.white/white}] {pos:>7}/{len:7} {msg} [elapsed: {elapsed}, rate: {per_sec}, eta: {eta}]")
+            .progress_chars("=> "),
     );
 
     let results = Arc::new(RwLock::new(
@@ -185,7 +188,7 @@ async fn main() {
             % (if index > (total_versions / 100) {
                 2000
             } else {
-                10
+                5
             })
             == 0
         {
@@ -206,6 +209,8 @@ async fn main() {
         }
     }
 
+    bar.finish();
+
     let data = results.read().unwrap();
 
     let binstall_data = data
@@ -214,6 +219,7 @@ async fn main() {
         .collect::<Vec<_>>();
 
     info!("versions with binstall support: {:?}", binstall_data.len());
+    
     info!(
         "crates with binstall support: {:?}",
         binstall_data
@@ -222,6 +228,7 @@ async fn main() {
             .collect::<HashSet<_>>()
             .len()
     );
+
     info!(
         "names of crates with binstall support: {:?}",
         binstall_data

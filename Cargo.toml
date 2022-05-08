@@ -46,3 +46,6 @@ tracing-subscriber = { version = "0.3.11", features = [
 ] }
 indicatif = "0.16.2"
 systemstat = "0.1.10"
+bytes = "1.1.0"
+futures-core = "0.3.21"
+thiserror = "1.0.31"
