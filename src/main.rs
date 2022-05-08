@@ -3,9 +3,11 @@ extern crate tracing;
 
 use rayon::prelude::*;
 use std::borrow::Cow;
+use systemstat::System;
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use systemstat::Platform;
 use tokio::sync::Semaphore;
 use tokio_util::io::StreamReader;
 
@@ -151,7 +153,7 @@ async fn main() {
         }
     });
 
-    let semaphore = Arc::new(Semaphore::new(num_cpus::get() * 8));
+    let semaphore = Arc::new(Semaphore::new(1));
     let bar = Arc::new(ProgressBar::new(total_versions.try_into().unwrap()));
 
     bar.set_style(
@@ -164,7 +166,7 @@ async fn main() {
         Vec::<(BinstallMetrics, Version)>::with_capacity(total_versions),
     ));
 
-    for item in data {
+    for (index, item) in data.enumerate() {
         let permit = semaphore.clone().acquire_owned().await;
         let progress_bar = Arc::clone(&bar);
         let results = Arc::clone(&results);
@@ -178,6 +180,30 @@ async fn main() {
                 result.push((metrics, version));
             }
         });
+
+        if index
+            % (if index > (total_versions / 100) {
+                2000
+            } else {
+                10
+            })
+            == 0
+        {
+            let sys = System::new();
+
+            if let Ok(memory) = sys.memory() {
+                if let Ok(cpu) = sys.load_average() {
+                    let memory_unused_pct =
+                        memory.free.as_u64() as f64 / memory.total.as_u64() as f64;
+                    let cpu_unused_pct =
+                        (num_cpus::get() as f32 - cpu.fifteen) / num_cpus::get() as f32;
+
+                    if memory_unused_pct > 0.1 && cpu_unused_pct > 0.1 {
+                        semaphore.add_permits(1);
+                    }
+                }
+            }
+        }
     }
 
     let data = results.read().unwrap();

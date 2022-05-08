@@ -45,3 +45,4 @@ tracing-subscriber = { version = "0.3.11", features = [
     "json"
 ] }
 indicatif = "0.16.2"
+systemstat = "0.1.10"
