@@ -34,7 +34,8 @@ pub struct BinstallMetrics {
 impl BinstallMetrics {
     pub fn new(manifest_path: Vec<u8>) -> Self {
         if let Ok(manifest) = Manifest::<binstall::Meta>::from_slice_with_metadata(&manifest_path) {
-            if let Some(metadata) = manifest.package.unwrap().metadata {
+            if let Some(package) = manifest.package {
+            if let Some(metadata) = package.metadata {
                 Self {
                     has_binstall_metadata: metadata.binstall.is_some(),
                     uses_https: metadata
@@ -55,6 +56,7 @@ impl BinstallMetrics {
             }
         }
     }
+}
 }
 
 pub struct Metric {
