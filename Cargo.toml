@@ -23,7 +23,7 @@ codegen-units = 1
 
 [dependencies]
 crates-index = "0.18.8"
-reqwest = { version = "0.11.10", features = ["stream"] }
+reqwest = { version = "0.11.11", features = ["stream"] }
 tokio = { version = "1.19.2", features = ["full"] }
 flate2 = "1.0.24"
 serde = { version = "1.0.137", features = ["derive"] }
