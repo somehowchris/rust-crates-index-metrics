@@ -35,13 +35,19 @@ impl BinstallMetrics {
     pub fn new(manifest_path: Vec<u8>) -> Self {
         if let Ok(manifest) = Manifest::<binstall::Meta>::from_slice_with_metadata(&manifest_path) {
             if let Some(package) = manifest.package {
-            if let Some(metadata) = package.metadata {
-                Self {
-                    has_binstall_metadata: metadata.binstall.is_some(),
-                    uses_https: metadata
-                        .binstall
-                        .map(|e| e.pkg_url.starts_with("https://"))
-                        .unwrap_or(false),
+                if let Some(metadata) = package.metadata {
+                    Self {
+                        has_binstall_metadata: metadata.binstall.is_some(),
+                        uses_https: metadata
+                            .binstall
+                            .map(|e| e.pkg_url.starts_with("https://"))
+                            .unwrap_or(false),
+                    }
+                } else {
+                    Self {
+                        has_binstall_metadata: false,
+                        uses_https: false,
+                    }
                 }
             } else {
                 Self {
@@ -57,7 +63,6 @@ impl BinstallMetrics {
         }
     }
 }
-}
 
 pub struct Metric {
     pub crate_: Crate,
@@ -65,7 +70,7 @@ pub struct Metric {
     pub binstall: BinstallMetrics,
 }
 
-use futures::{stream::Stream};
+
 
 #[tokio::main]
 async fn main() {
@@ -221,7 +226,7 @@ async fn main() {
         .collect::<Vec<_>>();
 
     info!("versions with binstall support: {:?}", binstall_data.len());
-    
+
     info!(
         "crates with binstall support: {:?}",
         binstall_data
