@@ -46,7 +46,7 @@ tracing-subscriber = { version = "0.3.15", features = [
     "fmt",
     "json"
 ] }
-indicatif = "0.16.2"
+indicatif = "0.17.0"
 systemstat = "0.1.11"
 bytes = "1.2.0"
 futures-core = "0.3.21"
