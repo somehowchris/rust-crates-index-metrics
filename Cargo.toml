@@ -33,7 +33,7 @@ futures = "0.3.24"
 num_cpus = "1.13.1"
 backoff = { version = "0.4.0", features = ["tokio"] }
 async-compression = { version = "0.3.14", features = ["tokio", "gzip"] }
-tokio-util = { version = "0.7.3", features = ["io"] }
+tokio-util = { version = "0.7.4", features = ["io"] }
 futures-util = "0.3.24"
 async-tar = "0.4.2"
 async-std = "1.12.0"
