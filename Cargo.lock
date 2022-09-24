@@ -232,12 +232,11 @@ checksum = "c1db59621ec70f09c5e9b597b220c7a2b43611f4710dc03ceb8748637775692c"
 
 [[package]]
 name = "cargo_toml"
-version = "0.11.7"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1946427680719501a282850618d74a03a8f456801ef805e0f083ab8325494384"
+checksum = "c820ea238df9b9054d3401b1d441b4cd6f461646fc55cbc60fabf9d2088b7f3a"
 dependencies = [
  "serde",
- "serde_derive",
  "toml",
 ]
 
