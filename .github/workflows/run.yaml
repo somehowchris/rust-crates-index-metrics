@@ -2,17 +2,16 @@ name: Run
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     timeout-minutes: 720
     steps:
-    - uses: actions/checkout@v3
-    - name: Run
-      run: cargo run --release
+      - uses: actions/checkout@v3
+      - name: Run
+        run: echo #cargo run --release
