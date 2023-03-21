@@ -72,7 +72,7 @@ pub struct Metric {
 
 
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
@@ -105,7 +105,7 @@ async fn main() {
     let data = versions.into_iter().map(|version| {
         let config = config.clone();
 
-        let crate_url = version.download_url(&config).unwrap();
+        let crate_url = version.download_url(&config).unwrap().replace("crates.io", "static.crates.io");
 
         async move {
             let url = &crate_url.clone();
@@ -163,12 +163,13 @@ async fn main() {
         }
     });
 
-    let semaphore = Arc::new(Semaphore::new(num_cpus::get()));
+    let semaphore = Arc::new(Semaphore::new(num_cpus::get()*2));
     let bar = Arc::new(ProgressBar::new(total_versions.try_into().unwrap()));
 
     bar.set_style(
         ProgressStyle::default_bar()
             .template("    Calculating Metrics [{bar:25.white/white}] {pos:>7}/{len:7} {msg} [elapsed: {elapsed}, rate: {per_sec}, eta: {eta}]")
+            .unwrap()
             .progress_chars("=> "),
     );
 
@@ -199,20 +200,27 @@ async fn main() {
             })
             == 0
         {
-            let sys = System::new();
+            let sem = semaphore.clone();
+            tokio::spawn(async move {
+                let sys = System::new();
 
-            if let Ok(memory) = sys.memory() {
-                if let Ok(cpu) = sys.load_average() {
-                    let memory_unused_pct =
-                        memory.free.as_u64() as f64 / memory.total.as_u64() as f64;
-                    let cpu_unused_pct =
-                        (num_cpus::get() as f32 - cpu.fifteen) / num_cpus::get() as f32;
-
-                    if memory_unused_pct > 0.1 && cpu_unused_pct > 0.1 {
-                        semaphore.add_permits(1);
+                if let Ok(memory) = sys.memory() {
+                    if let Ok(cpu) = sys.load_average() {
+                        let memory_unused_pct =
+                            memory.free.as_u64() as f64 / memory.total.as_u64() as f64;
+                        let cpu_unused_pct =
+                            (num_cpus::get() as f32 - cpu.fifteen) / num_cpus::get() as f32;
+    
+                        if memory_unused_pct > 0.1 && cpu_unused_pct > 0.1 {
+                            let mut permits: f64 = 1.0;
+                            while memory_unused_pct > 0.1 * permits && cpu_unused_pct as f64 > 0.1 * permits {
+                                permits +=1.0;
+                            }
+                            sem.add_permits(permits as u32 as usize);
+                        }
                     }
                 }
-            }
+            });
         }
     }
 
