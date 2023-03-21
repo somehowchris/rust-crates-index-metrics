@@ -70,8 +70,6 @@ pub struct Metric {
     pub binstall: BinstallMetrics,
 }
 
-
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     tracing_subscriber::registry()
@@ -105,7 +103,10 @@ async fn main() {
     let data = versions.into_iter().map(|version| {
         let config = config.clone();
 
-        let crate_url = version.download_url(&config).unwrap().replace("crates.io", "static.crates.io");
+        let crate_url = version
+            .download_url(&config)
+            .unwrap()
+            .replace("crates.io", "static.crates.io");
 
         async move {
             let url = &crate_url.clone();
@@ -163,7 +164,7 @@ async fn main() {
         }
     });
 
-    let semaphore = Arc::new(Semaphore::new(num_cpus::get()*2));
+    let semaphore = Arc::new(Semaphore::new(num_cpus::get() * 2));
     let bar = Arc::new(ProgressBar::new(total_versions.try_into().unwrap()));
 
     bar.set_style(
@@ -210,11 +211,13 @@ async fn main() {
                             memory.free.as_u64() as f64 / memory.total.as_u64() as f64;
                         let cpu_unused_pct =
                             (num_cpus::get() as f32 - cpu.fifteen) / num_cpus::get() as f32;
-    
+
                         if memory_unused_pct > 0.1 && cpu_unused_pct > 0.1 {
                             let mut permits: f64 = 1.0;
-                            while memory_unused_pct > 0.1 * permits && cpu_unused_pct as f64 > 0.1 * permits {
-                                permits +=1.0;
+                            while memory_unused_pct > 0.1 * permits
+                                && cpu_unused_pct as f64 > 0.1 * permits
+                            {
+                                permits += 1.0;
                             }
                             sem.add_permits(permits as u32 as usize);
                         }
