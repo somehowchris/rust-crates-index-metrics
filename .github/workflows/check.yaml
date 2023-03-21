@@ -16,4 +16,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run
-        run: cargo check --release
+        run: cargo check
