@@ -25,7 +25,7 @@ codegen-units = 1
 bytes = "1.4.0"
 crates-index = "0.19.7"
 serde = { version = "1.0.158", features = ["derive"] }
-reqwest = { version = "0.11.15", features = ["stream"] }
+reqwest = { version = "0.11.16", features = ["stream"] }
 tokio = { version = "1.27.0", features = ["rt", "macros"] }
 flate2 = "1.0.25"
 rayon = "1.7.0"
