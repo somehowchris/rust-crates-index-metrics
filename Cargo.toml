@@ -47,7 +47,7 @@ tracing-subscriber = { version = "0.3.17", features = [
     "json",
 ] }
 systemstat = "0.2.3"
-indicatif = "0.17.5"
+indicatif = "0.17.7"
 futures-core = "0.3.28"
 thiserror = "1.0.56"
 cargo_toml = "0.15.3"
