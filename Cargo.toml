@@ -37,7 +37,7 @@ tokio-util = { version = "0.7.10", features = ["io"] }
 futures-util = "0.3.30"
 async-tar = "0.4.2"
 async-std = "1.12.0"
-tracing-log = "0.1.3"
+tracing-log = "0.2.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
